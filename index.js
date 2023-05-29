@@ -32,50 +32,88 @@ async function run() {
     const menuCollection = database.collection("menu");
     const reviewsCollection = database.collection("reviews");
     const cartCollection = database.collection("carts");
+    const usersCollection = database.collection("users");
 
 
 
-    app.get('/menu',async(req,res)=>{
-        const result = await menuCollection.find().toArray()
-        // console.log(result)
-        res.send(result)
+    // users method 
+
+app.get('/users',async(req,res)=>{
+  const result = await usersCollection.find().toArray()
+  res.send(result)
+})
+
+
+    app.post('/users', async (req, res) => {
+      const user = req.body
+      const query = {email : user.email}
+      const existingUser = await usersCollection.findOne(query)
+      if(existingUser){
+        return res.send({message : 'user already exists'})
+      }
+      const result = await usersCollection.insertOne(user)
+      res.send(result)
     })
-    app.get('/reviews',async(req,res)=>{
-        const result = await reviewsCollection.find().toArray()
-        // console.log(result)
-        res.send(result)
+
+
+    app.patch('/users/admin/:id',async(req,res)=>{
+      const id = req.params.id 
+      const filter = {_id : new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          role: 'admin'
+        },
+      };
+
+      const result = await usersCollection.updateOne(filter,updateDoc)
+      res.send(result)
+
+    })
+
+    // menu method 
+    app.get('/menu', async (req, res) => {
+      const result = await menuCollection.find().toArray()
+      // console.log(result)
+      res.send(result)
+    })
+
+    // review method 
+    app.get('/reviews', async (req, res) => {
+      const result = await reviewsCollection.find().toArray()
+      // console.log(result)
+      res.send(result)
     })
 
 
-    
-        app.get('/carts',async(req,res)=>{
-            const email = req.query.email 
-            // console.log(email)
-            if(!email){
-              return res.send([])
-            }
-           
-                const query = {email: email}
+    // carts method 
+    app.get('/carts', async (req, res) => {
+      const email = req.query.email
+      // console.log(email)
+      if (!email) {
+        return res.send([])
+      }
 
-                const result = await cartCollection.find(query).toArray()
-                res.send(result)
-       
+      const query = { email: email }
 
-        })
-
-        app.post('/carts',async(req,res)=>{
-            const item = req.body
-            const result = await cartCollection.insertOne(item)
-            res.send(result)
-        })
+      const result = await cartCollection.find(query).toArray()
+      res.send(result)
 
 
-        app.delete('/carts/:id',async(req,res)=>{
-            const id = req.params.id 
-            const query = {_id : new ObjectId(id)}
-            const result = await cartCollection.deleteOne(query)
-            res.send(result)
-        })
+    })
+
+    app.post('/carts', async (req, res) => {
+      const item = req.body
+      const result = await cartCollection.insertOne(item)
+      res.send(result)
+    })
+
+
+    app.delete('/carts/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await cartCollection.deleteOne(query)
+      res.send(result)
+    })
 
 
 
@@ -99,10 +137,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/',(req , res)=>{
-    res.send('Boss is sitting')
+app.get('/', (req, res) => {
+  res.send('Boss is sitting')
 })
 
-app.listen(port,()=>{
-    console.log(`Boss are sitting on ${port}`)
+app.listen(port, () => {
+  console.log(`Boss are sitting on ${port}`)
 })
