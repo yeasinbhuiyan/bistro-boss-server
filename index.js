@@ -8,7 +8,14 @@ require('dotenv').config()
 const stripe = require('stripe')(process.env.PAYMENT_SECRECT_KEY)
 
 // middlewear  
-app.use(cors())
+
+const corsOptions = {
+  origin: '*',
+  credentials: true,
+  optionSuccessStatus: 200,
+}
+app.use(cors(corsOptions))
+
 app.use(express.json())
 
 
@@ -63,7 +70,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("bistroDb");
     const menuCollection = database.collection("menu");
@@ -87,9 +94,6 @@ async function run() {
 
 
     }
-
-
-
 
 
 
@@ -131,6 +135,8 @@ async function run() {
     })
 
 
+
+
     app.post('/users', async (req, res) => {
       const user = req.body
       const query = { email: user.email }
@@ -141,6 +147,8 @@ async function run() {
       const result = await usersCollection.insertOne(user)
       res.send(result)
     })
+
+
 
 
     // security layer : verifyJWT 
@@ -196,6 +204,11 @@ async function run() {
       res.send(result)
     })
 
+
+
+
+
+
     // review method 
     app.get('/reviews', async (req, res) => {
       const result = await reviewsCollection.find().toArray()
@@ -214,9 +227,6 @@ async function run() {
       const decodedEmail = req.decoded.email
 
 
-      console.log(decodedEmail, 'decorded email ')
-
-      console.log(email, 'query email')
 
       if (!email) {
         return res.send([])
@@ -226,20 +236,22 @@ async function run() {
         return res.status(401).send({ error: true, message: 'unauthorization email' })
 
       }
-
       const query = { email: email }
 
       const result = await cartCollection.find(query).toArray()
       res.send(result)
-
-
     })
+
+
 
     app.post('/carts', async (req, res) => {
       const item = req.body
       const result = await cartCollection.insertOne(item)
       res.send(result)
     })
+
+
+
 
 
     app.delete('/carts/:id', async (req, res) => {
@@ -277,36 +289,35 @@ async function run() {
     app.post('/payments', verifyJWT, async (req, res) => {
       const payment = req.body
       const insertResult = await paymentCollection.insertOne(payment)
-      const query = {_id : {$in : payment.cartItems.map(id => new ObjectId(id))}}
+      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
       const deleteResult = await cartCollection.deleteMany(query)
 
-      res.send({ insertResult , deleteResult})
-      
+      res.send({ insertResult, deleteResult })
+
     })
 
 
-    //  
+    //  stat
 
-    app.get('/admin-stats',verifyJWT,verifyAdmin,async(req,res) =>{
+    app.get('/admin-stats', verifyJWT, verifyAdmin, async (req, res) => {
       const users = await usersCollection.estimatedDocumentCount()
       const menuItems = await menuCollection.estimatedDocumentCount()
       const orders = await paymentCollection.estimatedDocumentCount()
       const payments = await paymentCollection.find().toArray()
-      const revenue = payments.reduce((sum , payment )=> sum + payment.price,0)
-      res.send({users , menuItems , orders , revenue})
+      const revenue = payments.reduce((sum, payment) => sum + payment.price, 0)
+      res.send({ users, menuItems, orders, revenue })
 
     })
 
 
 
 
-    app.get('/order-stats' , verifyJWT,verifyAdmin,async(req,res)=>{
-     const pipeline = [
-      
-       
+    app.get('/order-stats', verifyJWT, verifyAdmin, async (req, res) => {
+      const pipeline = [
+
         {
           $lookup: {
-            from: 'menu', 
+            from: 'menu',
             localField: 'menuItems',
             foreignField: '_id',
             as: 'menuItemsData'
@@ -321,12 +332,12 @@ async function run() {
             count: { $sum: 1 },
             totalPrice: { $sum: '$menuItemsData.price' }
           }
-        },{
-          $project : {
-            category : '$_id',
-            count : 1,
-            total : {$round : ['$totalPrice',2]},
-            _id : 0
+        }, {
+          $project: {
+            category: '$_id',
+            count: 1,
+            total: { $round: ['$totalPrice', 2] },
+            _id: 0
           }
         }
       ];
